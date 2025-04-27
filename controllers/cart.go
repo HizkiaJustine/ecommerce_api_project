@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"ecommerce_api_project/database"
+	"ecommerce_api_project/models"
 	"errors"
 	"log"
 	"net/http"
