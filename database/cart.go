@@ -102,7 +102,7 @@ func BuyItemFromCart(ctx context.Context, userCollection *mongo.Collection, user
 		totalPrice = price.(int32)
 	}
 
-	orderCart.Price = uint64(totalPrice)
+	orderCart.Price = int(totalPrice)
 
 	filter := bson.D{primitive.E{Key: "_id", Value: id}}
 	update := bson.D{{Key: "$push", Value: bson.D{primitive.E{Key: "orders", Value: orderCart}}}}
@@ -152,7 +152,7 @@ func InstantBuyer(ctx context.Context, prodCollection, userCollection *mongo.Col
 	if err != nil {
 		log.Println(err)
 	}
-	orderDetail.Price = uint64(ProductDetails.Price)
+	orderDetail.Price = int(ProductDetails.Price)
 
 	filter := bson.D{primitive.E{Key: "_id", Value: id}}
 	update := bson.D{{Key: "$push", Value: bson.D{primitive.E{Key: "orders", Value: orderDetail}}}}

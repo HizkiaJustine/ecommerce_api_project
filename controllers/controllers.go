@@ -4,6 +4,7 @@ import (
 	"context"
 	"ecommerce_api_project/database"
 	"ecommerce_api_project/models"
+	"ecommerce_api_project/tokens"
 	"fmt"
 	"log"
 	"net/http"
@@ -88,7 +89,7 @@ func SignUp() gin.HandlerFunc {
 		user.UpdatedAt, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
 		user.ID = primitive.NewObjectID()
 		user.UserID = user.ID.Hex()
-		token, refreshToken, _ := generate.TokenGenerator(*user.Email, *user.FirstName, *user.LastName, user.UserID)
+		token, refreshToken, _ := tokens.TokenGenerator(*user.Email, *user.FirstName, *user.LastName, user.UserID)
 		user.Token = &token
 		user.RefreshToken = &refreshToken
 		user.UserCart = make([]models.ProductUser, 0)
@@ -109,6 +110,7 @@ func Login() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 		defer cancel()
+		var foundUser models.User
 
 		var user models.User
 		if err := c.BindJSON(&user); err != nil {
@@ -116,7 +118,7 @@ func Login() gin.HandlerFunc {
 			return
 		}
 
-		err := UserCollection.FindOne(ctx, bson.M{"email": user.Email}).Decode(&founduser)
+		err := UserCollection.FindOne(ctx, bson.M{"email": user.Email}).Decode(&foundUser)
 		defer cancel()
 
 		if err != nil {
@@ -124,7 +126,7 @@ func Login() gin.HandlerFunc {
 			return
 		}
 
-		PasswordIsValid, msg := VerifyPassword(*user.Password, *founduser.Password)
+		PasswordIsValid, msg := VerifyPassword(*user.Password, *foundUser.Password)
 		defer cancel()
 
 		if !PasswordIsValid {
@@ -132,17 +134,34 @@ func Login() gin.HandlerFunc {
 			fmt.Println(msg)
 			return
 		}
-		token, refreshToken, _ := generate.TokenGenerator(*founduser.Email, *founduser.FirstName, *founduser.LastName, founduser.UserID)
+		token, refreshToken, _ := tokens.TokenGenerator(*foundUser.Email, *foundUser.FirstName, *foundUser.LastName, foundUser.UserID)
 		defer cancel()
 
-		generate.UpdateAllTokens(token, refreshToken, founduser.UserID)
+		tokens.UpdateAllTokens(token, refreshToken, foundUser.UserID)
 
-		c.JSON(http.StatusFound, founduser)
+		c.JSON(http.StatusFound, foundUser)
 	}
 }
 
 func ProductViewerAdmin() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+		var products models.Product
+		defer cancel()
+		if err := c.BindJSON(&products); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 
+		products.ProductID = primitive.NewObjectID()
+		_, anyerr := ProductCollection.InsertOne(ctx, products)
+		if anyerr != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "product not inserted"})
+			return
+		}
+		defer cancel()
+		c.JSON(http.StatusOK, "successfully added")
+	}
 }
 
 func SearchProduct() gin.HandlerFunc {
@@ -165,9 +184,9 @@ func SearchProduct() gin.HandlerFunc {
 			return
 		}
 
-		defer cursor.Close()
+		defer cursor.Close(ctx)
 
-		if err := cursor.err(); err != nil {
+		if err := cursor.Err(); err != nil {
 			log.Println(err)
 			c.IndentedJSON(400, "invalid")
 			return

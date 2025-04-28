@@ -61,7 +61,7 @@ func (app *Application) AddToCart() gin.HandlerFunc {
 	}
 }
 
-func RemoveItem() gin.HandlerFunc {
+func (app *Application) RemoveItem() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		productQueryID := c.Query("ProductID")
 		if productQueryID == "" {
@@ -111,7 +111,7 @@ func GetItemFromCart() gin.HandlerFunc {
 		defer cancel()
 
 		var filledCart models.User
-		UserCollection.FindOne(ctx, bson.D{primitive.E{Key: "_id", Value: usertID}}).Decode(&filledCart)
+		err := UserCollection.FindOne(ctx, bson.D{primitive.E{Key: "_id", Value: usertID}}).Decode(&filledCart)
 
 		if err != nil {
 			log.Println(err)
