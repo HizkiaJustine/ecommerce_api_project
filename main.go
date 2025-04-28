@@ -3,7 +3,7 @@ package main
 import (
 	"ecommerce_api_project/controllers"
 	"ecommerce_api_project/database"
-	"ecommerce_api_project/middlewares"
+	"ecommerce_api_project/middleware"
 	"ecommerce_api_project/routes"
 	"log"
 	"os"
